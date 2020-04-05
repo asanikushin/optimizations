@@ -38,7 +38,7 @@ class Extrapolation(BaseMomentum):
         while grad(tau_k) and value(tau_k) < value(tau_prev):
             tau_prev = tau_k
             tau_k = 2 * tau_k
-        return tau_k
+        return tau_prev
 
     def __str__(self):
         return "Extrapolation momentum"
@@ -51,37 +51,47 @@ class ArmijoRule(BaseMomentum):
         self.beta = beta
 
     def __call__(self, x_k, x_prev, **kwargs) -> float:
-        f_value = kwargs.get("f_value") if kwargs.get("f_value") is None else self.oracle.func(x_k)
-        f_grad = kwargs.get("f_grad") if kwargs.get("f_grad") is None else self.oracle.grad(x_k)
-        phi_deriv = np.sum(2 * f_grad * x_k * (x_k - x_prev))
-        left, right = f_value + phi_deriv / 3, f_value + 2 * phi_deriv / 3
+        def grad(tau):
+            return self.grad(self.oracle, tau, x_k, x_prev)
+
+        f_value = kwargs["f_value"] if "f_value" in kwargs else self.oracle.func(x_k)
+        f_deriv = grad(0)
+        if f_deriv >= 0:
+            return 0.0
+
+        def left_border(tau):
+            return f_value + f_deriv * self.beta * tau
+
+        def right_border(tau):
+            return f_value + f_deriv * self.alpha * tau
+
+        if left_border(1) <= f_value <= right_border(1):
+            return 1.0
+
         t_0, t_1 = 1, 1
-        while phi_deriv >= 0:
+        while True:
             x_new = x_k + t_0 * (x_k - x_prev)
             f_new = self.oracle.func(x_new)
-            if f_new <= left:
-                if t_0 < t_1:
-                    break
+            if t_0 >= t_1 and f_new < right_border(t_0):
                 t_1 = t_0 * 2
-            elif f_new >= right:
-                if t_0 > t_1:
-                    break
+            elif t_0 <= t_1 and f_new > left_border(t_0):
                 t_1 = t_0 / 2
             else:
                 break
             t_0, t_1 = t_1, t_0
         t_0, t_1 = min(t_0, t_1), max(t_0, t_1)
-        while np.abs(t_0 - t_1) > 1e-5:
+        if t_1 < 1e-3:
+            return 0.0  # there is actually no difference
+        while True:
             mid = (t_0 + t_1) / 2
             x_new = x_k + mid * (x_k - x_prev)
             f_new = self.oracle.func(x_new)
-            if f_new <= left:
+            if f_new < left_border(mid):
                 t_0 = mid
-            elif f_new >= right:
+            elif f_new > right_border(mid):
                 t_1 = mid
             else:
                 return mid
-        return t_0
 
     def __str__(self):
         return "Armijo Rule"
