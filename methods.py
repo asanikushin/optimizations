@@ -1,9 +1,9 @@
 from oracles import BaseSmoothOracle
 from momentum import BaseMomentum
 import numpy as np
-from typing import Tuple, Dict, Any, Optional, List
+from typing import Tuple, Dict, Optional, List
 
-MAX_ITER = 100 * 1000
+MAX_ITER = 100_000
 TOLERANCE = 1e-7
 
 
@@ -63,17 +63,16 @@ class PureGradientMethod(BaseOptimizationMethod):
         self.calls: Dict[str, List[np.float64]] = dict(values=[], gradients=[])
         self.iteration = 0
 
-    def __call__(self, x_0, l_0, *args, **kwargs) -> Tuple[np.ndarray, float]:
-        x_k, l_k = x_0, l_0
+    def __call__(self, x_0, l_0, *args, **kwargs) -> Tuple[np.ndarray, np.float]:
+        x_k, l_k = x_0, np.float(l_0)
         f_value = self.oracle.func(x_k)
         f_grad = self.oracle.grad(x_k)
-        f_prev = np.float64("-inf")
         x_prev = x_k
         while (self.iteration == 0 or np.linalg.norm(x_k - x_prev) > self.tolerance) and self.iteration < self.max_iter:
             if self.iteration > 1 and self.momentum is not None:
                 tau = self.momentum(x_k, x_prev, f_grad=f_grad, f_value=f_value)
                 x_k = x_k + tau * (x_k - x_prev)
-            f_prev = f_value = self.oracle.func(x_k)
+            f_value = self.oracle.func(x_k)
             f_grad = self.oracle.grad(x_k)
 
             i_k = 0
