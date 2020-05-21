@@ -14,12 +14,12 @@ class BaseMomentum:
 
     @staticmethod
     def value(oracle: BaseSmoothOracle, tau, x_k, x_prev):
-        return oracle.func(x_k + tau * (x_k - x_prev))
+        return oracle.func(x_prev + tau * (x_k - x_prev))
 
     @staticmethod
     def grad(oracle: BaseSmoothOracle, tau, x_k, x_prev):
         delta = x_k - x_prev
-        return np.dot(oracle.grad(x_k + tau * delta), delta)
+        return np.dot(oracle.grad(x_prev + tau * delta), delta)
 
 
 class Extrapolation(BaseMomentum):
@@ -54,7 +54,7 @@ class ArmijoRule(BaseMomentum):
         def grad(tau):
             return self.grad(self.oracle, tau, x_k, x_prev)
 
-        f_value = kwargs["f_value"] if "f_value" in kwargs else self.oracle.func(x_k)
+        f_value = kwargs["f_value"] if "f_value" in kwargs else self.oracle.func(x_prev)
         f_deriv = grad(0)
         if f_deriv >= 0:
             return 0.0
@@ -70,7 +70,7 @@ class ArmijoRule(BaseMomentum):
 
         t_0, t_1 = 1, 1
         while True:
-            x_new = x_k + t_0 * (x_k - x_prev)
+            x_new = x_prev + t_0 * (x_k - x_prev)
             f_new = self.oracle.func(x_new)
             if t_0 >= t_1 and f_new < right_border(t_0):
                 t_1 = t_0 * 2
@@ -84,7 +84,7 @@ class ArmijoRule(BaseMomentum):
             return 0.0  # there is actually no difference
         while True:
             mid = (t_0 + t_1) / 2
-            x_new = x_k + mid * (x_k - x_prev)
+            x_new = x_prev + mid * (x_k - x_prev)
             f_new = self.oracle.func(x_new)
             if f_new < left_border(mid):
                 t_0 = mid

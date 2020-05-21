@@ -70,8 +70,8 @@ class PureGradientMethod(BaseOptimizationMethod):
         x_prev = x_k
         while (self.iteration == 0 or np.linalg.norm(x_k - x_prev) > self.tolerance) and self.iteration < self.max_iter:
             if self.iteration > 1 and self.momentum is not None:
-                tau = self.momentum(x_k, x_prev, f_grad=f_grad, f_value=f_value)
-                x_k = x_k + tau * (x_k - x_prev)
+                tau = self.momentum(x_k, x_prev, f_grad=f_grad)
+                x_k = x_prev + tau * (x_k - x_prev)
             f_value = self.oracle.func(x_k)
             f_grad = self.oracle.grad(x_k)
 
